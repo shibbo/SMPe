@@ -1,0 +1,8 @@
+# Visual Studio stuff
+.vs/*
+
+# Binaries
+SMPe/bin/*
+SMPe/obj/*
+
+*exe
