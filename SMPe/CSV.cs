@@ -9,6 +9,12 @@ namespace SMPe
 {
     class CSV
     {
+        /// <summary>
+        /// Constructor for a CSV.
+        /// </summary>
+        /// <param name="src">The path to the CSV.</param>
+        /// <param name="numAttributes">The number of attributes per cell in the CSV.</param>
+        /// <param name="saveHeader">A boolean to determine if we need to read a header.</param>
         public CSV(string src, int numAttributes, bool saveHeader)
         {
             mNumAttributes = numAttributes;

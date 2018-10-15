@@ -5,20 +5,25 @@ using System.Windows.Forms;
 
 namespace SMPe
 {
-    public partial class Form1 : Form
+    public partial class Editor : Form
     {
-        public Form1()
+        public Editor()
         {
             InitializeComponent();
         }
 
         private void openToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            OpenFileDialog dialog = new OpenFileDialog();
+            OpenFileDialog dialog = new OpenFileDialog
+            {
+                Filter = "CSV Files (*.csv)|*.csv|All files (*.*)|*.*"
+            };
 
             if (dialog.ShowDialog() == DialogResult.OK)
             {
                 mCSV = new CSV(dialog.FileName, 8, true);
+
+                this.Text = String.Format("{0} -- {1}", this.Text, Path.GetFileName(dialog.FileName));
 
                 // this is the part that is hardcoded for maps. yay :D
                 foreach (string[] entry in mCSV.mEntries)
@@ -30,7 +35,10 @@ namespace SMPe
 
         private void saveToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            SaveFileDialog saveDialog = new SaveFileDialog();
+            SaveFileDialog saveDialog = new SaveFileDialog
+            {
+                Filter = "CSV Files (*.csv)|*.csv|All files (*.*)|*.*"
+            };
 
             if (saveDialog.ShowDialog() == DialogResult.OK)
             {
@@ -87,6 +95,42 @@ namespace SMPe
             }
 
             return true;
+        }
+
+        /// <summary>
+        /// Checks to see if a value exists in the datagrid.
+        /// </summary>
+        /// <param name="value">The value to search for.</param>
+        /// <returns>True if it exists, false if not.</returns>
+        private bool valueExists(string value)
+        {
+            foreach (DataGridViewRow row in dataGridView1.Rows)
+            {
+                foreach (DataGridViewCell cell in row.Cells)
+                {
+                    if (cell.Value.ToString() == value)
+                        return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Checks to see if a value exists within a certain cell in the datagrid.
+        /// </summary>
+        /// <param name="value">The value to search for.</param>
+        /// <param name="cellIdx">The index of the cell.</param>
+        /// <returns>True if it exists, false if not.</returns>
+        private bool valueExists(string value, int cellIdx)
+        {
+            foreach (DataGridViewRow row in dataGridView1.Rows)
+            {
+                if (row.Cells[cellIdx].Value.ToString() == value)
+                    return true;
+            }
+
+            return false;
         }
 
         CSV mCSV;
