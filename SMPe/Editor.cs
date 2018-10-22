@@ -2,6 +2,10 @@
 using System.IO;
 using System.Text;
 using System.Windows.Forms;
+using System.Drawing;
+using SMPe.fres;
+using SMPe.io;
+using System.Collections.Generic;
 
 namespace SMPe
 {
@@ -14,125 +18,179 @@ namespace SMPe
 
         private void openToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            OpenFileDialog dialog = new OpenFileDialog
+            OpenFileDialog fresdialog = new OpenFileDialog
+            {
+                Filter = "FMDB Files (*.fmdb)|*.fmdb|All files (*.*)|*.*"
+            };
+
+            if (fresdialog.ShowDialog() == DialogResult.OK)
+            {
+                EndianBinaryReader reader = new EndianBinaryReader(File.Open(fresdialog.FileName, FileMode.Open));
+
+                mBfres = new BFRES(ref reader);
+            }
+            else
+                return;
+
+            OpenFileDialog csvdialog = new OpenFileDialog
             {
                 Filter = "CSV Files (*.csv)|*.csv|All files (*.*)|*.*"
             };
 
-            if (dialog.ShowDialog() == DialogResult.OK)
+            if (csvdialog.ShowDialog() == DialogResult.OK)
+                mBoard = new Board(csvdialog.FileName);
+            else
+                return;
+
+            nodePositions = new Dictionary<string, PointF>();
+
+            foreach (FSKL.Bone bone in mBfres.mSkeleton.mBones)
             {
-                mCSV = new CSV(dialog.FileName, 8, true);
+                PointF point = new PointF(bone.mTranslation.X, bone.mTranslation.Z);
+                nodePositions.Add(bone.mName, point);
 
-                this.Text = String.Format("{0} -- {1}", this.Text, Path.GetFileName(dialog.FileName));
+                SpaceNode node = GetSpaceFromKey(bone.mName);
 
-                // this is the part that is hardcoded for maps. yay :D
-                foreach (string[] entry in mCSV.mEntries)
+                TreeNode tnode = new TreeNode(bone.mName)
                 {
-                    dataGridView1.Rows.Add(entry[0], entry[1], entry[2], entry[3], entry[4], entry[5], entry[6], entry[7]);
-                }
+                    Tag = node
+                };
+
+                treeView1.Nodes.Add(tnode);
             }
+
+            drawFlag = true;
+            statusStrip.Text = "File successfully loaded!";
+            panel1.Invalidate();
         }
 
         private void saveToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            SaveFileDialog saveDialog = new SaveFileDialog
+
+        }
+
+        private void panel1_Paint(object sender, PaintEventArgs e)
+        {
+            if (!drawFlag)
+                return;
+
+            Graphics g = e.Graphics;
+            g.SetClip(e.ClipRectangle);
+            g.ScaleTransform(6f, 6f);
+            g.TranslateTransform(60.0f, 30.0f);
+            g.Clear(Color.Black);
+
+            Pen pen = null;
+
+            int curSpace = 0;
+            
+            // decide the color of the space (lol)
+            foreach(string key in nodePositions.Keys)
             {
-                Filter = "CSV Files (*.csv)|*.csv|All files (*.*)|*.*"
-            };
-
-            if (saveDialog.ShowDialog() == DialogResult.OK)
-            {
-                StringBuilder lines = new StringBuilder();
-
-                // we append our header from earlier
-                lines.Append(mCSV.mHeader + Environment.NewLine);
-
-                bool isEmptyRow = false;
-
-                foreach (DataGridViewRow row in dataGridView1.Rows)
+                if (curSpace == 0)
                 {
-                    for (int i = 0; i < mCSV.mNumAttributes; i++)
-                    {
-                        // first we check to see if the row itself is empty
-                        // if it is, we discard it and move on
-                        if (isRowEmpty(row))
-                        {
-                            isEmptyRow = true;
-                            continue;
-                        }
-
-                        // if a cell's value is NULL, we just add a comma to add the null attribute
-                        // if not, we just use the value that is there
-                        if (row.Cells[i].Value == null)
-                            lines.Append(",");
-                        else
-                            lines.Append(row.Cells[i].Value.ToString() + ",");
-                    }
-
-                    // if this row is not empty, we append a newline for the next row
-                    // this is here because if the row is empty, it will create a empty line which annoys me
-                    if (!isEmptyRow)
-                        lines.Append(Environment.NewLine);
-                    else
-                        isEmptyRow = false;
+                    curSpace++;
+                    continue;
                 }
 
-                File.WriteAllText(saveDialog.FileName, lines.ToString());
-            }
-        }
-        
-        /// <summary>
-        /// Returns if a row in a DataGridViewRow is empty.
-        /// </summary>
-        /// <param name="row">The row to determine if it is empty.</param>
-        /// <returns>True is empty, False if not.</returns>
-        private bool isRowEmpty(DataGridViewRow row)
-        {
-            foreach (DataGridViewCell cell in row.Cells)
-            {
-                if (cell.Value != null)
-                    return false;
-            }
+                if (key == "hook_group")
+                    continue;
 
-            return true;
-        }
+                SpaceNode node = GetSpaceFromKey(key);
 
-        /// <summary>
-        /// Checks to see if a value exists in the datagrid.
-        /// </summary>
-        /// <param name="value">The value to search for.</param>
-        /// <returns>True if it exists, false if not.</returns>
-        private bool valueExists(string value)
-        {
-            foreach (DataGridViewRow row in dataGridView1.Rows)
-            {
-                foreach (DataGridViewCell cell in row.Cells)
+                if (node == null)
                 {
-                    if (cell.Value.ToString() == value)
-                        return true;
+                    DrawSpace(pen, nodePositions[key], g);
+                    continue;
+                }
+
+                Console.WriteLine(node.mSpaceType);
+
+                switch (node.mSpaceType)
+                {
+                    case "PLUS":
+                        pen = new Pen(Color.Blue);
+                        DrawSpace(pen, nodePositions[key], g);
+                        break;
+                    case "MINUS":
+                        pen = new Pen(Color.Red);
+                        DrawSpace(pen, nodePositions[key], g);
+                        break;
+                    case "HAPPENING":
+                        pen = new Pen(Color.White);
+                        DrawSpace(pen, nodePositions[key], g);
+                        break;
+                    case "START":
+                        pen = new Pen(Color.Green);
+                        DrawSpace(pen, nodePositions[key], g);
+                        break;
+                    default:
+                        pen = new Pen(Color.Gold);
+                        DrawSpace(pen, nodePositions[key], g);
+                        break;
                 }
             }
-
-            return false;
         }
 
-        /// <summary>
-        /// Checks to see if a value exists within a certain cell in the datagrid.
-        /// </summary>
-        /// <param name="value">The value to search for.</param>
-        /// <param name="cellIdx">The index of the cell.</param>
-        /// <returns>True if it exists, false if not.</returns>
-        private bool valueExists(string value, int cellIdx)
+        private void panel1_MouseDown(object sender, MouseEventArgs e)
         {
-            foreach (DataGridViewRow row in dataGridView1.Rows)
+            // todo
+        }
+
+        private void DrawSpace(Pen pen, PointF point, Graphics g)
+        {
+            PointF point2 = PointF.Add(point, new SizeF(1, 0));
+            g.DrawLine(pen, point, point2);
+        }
+
+        private SpaceNode GetSpaceFromKey(string key)
+        {
+            string[] split = key.Split('_');
+
+            foreach(SpaceNode node in mBoard.mSpaces)
             {
-                if (row.Cells[cellIdx].Value.ToString() == value)
-                    return true;
+                string checkedStr = "";
+
+                // only 3 possible combinations lol
+                int lenStr = node.mNodeID.Length;
+
+                // the bone names are hook_XXX, while the node IDs here are 1, 2, 10, etc
+                // so we need to pad the left with 0s to properly match the bone id
+
+                checkedStr = node.mNodeID.PadLeft(3, '0');
+
+                Console.WriteLine("Checked {0}", checkedStr);
+
+                if (checkedStr == split[1])
+                    return node;
             }
 
-            return false;
+            return null;
         }
 
-        CSV mCSV;
+        private void closeToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            Close();
+        }
+
+        private void treeView1_NodeMouseClick(object sender, TreeNodeMouseClickEventArgs e)
+        {
+            SpaceNode node = (SpaceNode)e.Node.Tag;
+            try
+            {
+                statusStrip.Text = String.Format("Selected Node: '{0}' Next: ('{1}' '{2}' '{3}' '{4}') Attributes: ('{5}' '{6}' '{7}')", node.mNodeID, node.mNextNodes[0], node.mNextNodes[1], node.mNextNodes[2], node.mNextNodes[3], node.mSpaceType, node.mAttr2, node.mAttr3);
+            }
+            catch
+            {
+                Console.WriteLine("whoops");
+            }
+        }
+
+        Dictionary<string, PointF> nodePositions;
+
+        BFRES mBfres;
+        Board mBoard;
+
+        bool drawFlag = false;
     }
 }
