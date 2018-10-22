@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Text;
 using System.Windows.Forms;
@@ -93,6 +93,7 @@ namespace SMPe
                     continue;
                 }
 
+                // some hooks dont have spaces
                 if (key == "hook_group")
                     continue;
 
@@ -100,6 +101,7 @@ namespace SMPe
 
                 if (node == null)
                 {
+                    pen = new Pen(Color.LightCyan);
                     DrawSpace(pen, nodePositions[key], g);
                     continue;
                 }
@@ -137,12 +139,23 @@ namespace SMPe
             // todo
         }
 
+        /// <summary>
+        /// Draws a space based on a position given.
+        /// </summary>
+        /// <param name="pen">The pen to use. This can change the color of the space drawn.</param>
+        /// <param name="point">The X and Y coordinate to draw at.</param>
+        /// <param name="g">Graphics instance to use.</param>
         private void DrawSpace(Pen pen, PointF point, Graphics g)
         {
             PointF point2 = PointF.Add(point, new SizeF(1, 0));
             g.DrawLine(pen, point, point2);
         }
 
+        /// <summary>
+        /// Returns a SpaceNode instance baesd on a given key.
+        /// </summary>
+        /// <param name="key">The node name to check for in the board space instances.</param>
+        /// <returns>A SpaceNode that matches the given key. Returns null if not found.</returns>
         private SpaceNode GetSpaceFromKey(string key)
         {
             string[] split = key.Split('_');
@@ -151,15 +164,10 @@ namespace SMPe
             {
                 string checkedStr = "";
 
-                // only 3 possible combinations lol
-                int lenStr = node.mNodeID.Length;
-
                 // the bone names are hook_XXX, while the node IDs here are 1, 2, 10, etc
                 // so we need to pad the left with 0s to properly match the bone id
 
                 checkedStr = node.mNodeID.PadLeft(3, '0');
-
-                Console.WriteLine("Checked {0}", checkedStr);
 
                 if (checkedStr == split[1])
                     return node;
