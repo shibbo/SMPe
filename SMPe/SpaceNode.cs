@@ -21,6 +21,10 @@ namespace SMPe
             mNextNodes[2] = theLine[3];
             mNextNodes[3] = theLine[4];
 
+            for (int i = 0; i < 4; i++)
+                if (mNextNodes[i] != "")
+                    mNumNextNodes++;
+
             mSpaceType = theLine[5];
             mAttr2 = theLine[6];
             mAttr3 = theLine[7];
@@ -31,5 +35,7 @@ namespace SMPe
         public string mSpaceType;
         public string mAttr2;
         public string mAttr3;
+
+        public byte mNumNextNodes;
     }
 }
