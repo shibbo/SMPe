@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Text;
 using System.Windows.Forms;
@@ -206,6 +206,7 @@ namespace SMPe
             g.DrawLine(pen, point, point2);
         }
 
+<<<<<<< HEAD
         private void DrawLinesToNextNodes(SpaceNode node, Graphics g)
         {
             Pen myPen = new Pen(Color.FromArgb(128, Color.Cyan));
@@ -247,6 +248,10 @@ namespace SMPe
 
         /// <summary>
         /// Returns a SpaceNode instance based on a given key.
+=======
+        /// <summary>
+        /// Returns a SpaceNode instance baesd on a given key.
+>>>>>>> f9e139e5d7c2a828e9bc83bce3d57bc5dc6cfce7
         /// </summary>
         /// <param name="key">The node name to check for in the board space instances.</param>
         /// <returns>A SpaceNode that matches the given key. Returns null if not found.</returns>
