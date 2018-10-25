@@ -1,3 +1,15 @@
+/*
+    © 2018 - shibboleet
+    SMPe is free software: you can redistribute it and/or modify it under
+    the terms of the GNU General Public License as published by the Free
+    Software Foundation, either version 3 of the License, or (at your option)
+    any later version.
+    SMPe is distributed in the hope that it will be useful, but WITHOUT ANY 
+    WARRANTY; See the GNU General Public License for more details.
+    You should have received a copy of the GNU General Public License along 
+    with SMPe. If not, see http://www.gnu.org/licenses/.
+*/
+
 using System;
 using System.IO;
 using System.Text;
@@ -6,6 +18,7 @@ using System.Drawing;
 using SMPe.fres;
 using SMPe.io;
 using System.Collections.Generic;
+using SMPe.bea;
 
 namespace SMPe
 {
@@ -14,93 +27,26 @@ namespace SMPe
         public Editor()
         {
             InitializeComponent();
+        }
 
-            mSimpleNodeNames = new Dictionary<string, string>()
-            {
-                { "PLUS", "Blue Space" },
-                { "MINUS", "Red Space" },
-                { "LUCKY", "Lucky Space" },
-                { "HATENA_1", "Event Space 1" },
-                { "HATENA_2", "Event Space 2" },
-                { "HATENA_3", "Event Space 3" },
-                { "START", "Starting Point" },
-                { "MARK_PC", "Character Start Point" },
-                { "MARK_STAR", "Star Position" },
-                { "MARK_STAROBJ", "Toadette Position" },
-                { "SUPPORT", "Ally Space" },
-                { "HAPPENING", "Unlucky Space" },
-                { "ITEM", "Item Space" },
-                { "BATTAN", "Whomp" },
-                { "JUGEMU_OBJ", "Lakitu Cloud" },
-                { "JUGEMU", "Lakitu Space" },
-                { "JOYCON", "Versus Space" },
-                { "TREASURE_OBJ", "Treasure Chest" },
-                { "SHOP_A", "Shop 1 (Normal)" },
-                { "SHOP_B", "Shop 2 (Special)" },
-                { "", "Branch" }
-            };
+        public Editor(string where)
+        {
+            InitializeComponent();
+
+            PerformOpen(where);
         }
 
         private void openToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            OpenFileDialog fresdialog = new OpenFileDialog
+            OpenFileDialog beadialog = new OpenFileDialog
             {
-                Filter = "FMDB Files (*.fmdb)|*.fmdb|All files (*.*)|*.*"
+                Filter = "BEA Archive (*.bea)|*.bea|All files (*.*)|*.*"
             };
 
-            if (fresdialog.ShowDialog() == DialogResult.OK)
-            {
-                EndianBinaryReader reader = new EndianBinaryReader(File.Open(fresdialog.FileName, FileMode.Open));
-
-                mBfres = new BFRES(ref reader);
-            }
+            if (beadialog.ShowDialog() == DialogResult.OK)
+                PerformOpen(beadialog.FileName);
             else
                 return;
-
-            OpenFileDialog csvdialog = new OpenFileDialog
-            {
-                Filter = "CSV Files (*.csv)|*.csv|All files (*.*)|*.*"
-            };
-
-            if (csvdialog.ShowDialog() == DialogResult.OK)
-                mBoard = new Board(csvdialog.FileName);
-            else
-                return;
-
-            nodePositions = new Dictionary<string, PointF>();
-
-            foreach (FSKL.Bone bone in mBfres.mSkeleton.mBones)
-            {
-                PointF point = new PointF(bone.mTranslation.X, bone.mTranslation.Z);
-                nodePositions.Add(bone.mName, point);
-
-                SpaceNode node = GetSpaceFromKey(bone.mName);
-
-                if (node != null)
-                {
-                    string nodeName;
-
-                    try
-                    {
-                        nodeName = mSimpleNodeNames[node.mSpaceType];
-                    }
-                    catch
-                    {
-                        nodeName = node.mSpaceType;
-                    }
-
-                    TreeNode tnode = new TreeNode(nodeName)
-                    {
-                        Tag = node
-                    };
-
-                    treeView1.Nodes.Add(tnode);
-                }
-            }
-
-            drawFlag = true;
-            statusStrip.Text = "File successfully loaded!";
-            panel1.Invalidate();
         }
 
         private void saveToolStripMenuItem_Click(object sender, EventArgs e)
@@ -172,11 +118,23 @@ namespace SMPe
                         DrawSpace(pen, nodePositions[key], g);
                         break;
                     case "HAPPENING":
-                        pen = new Pen(Color.White);
+                        pen = new Pen(Color.DarkRed);
                         DrawSpace(pen, nodePositions[key], g);
                         break;
                     case "START":
                         pen = new Pen(Color.Green);
+                        DrawSpace(pen, nodePositions[key], g);
+                        break;
+                    case "JOYCON":
+                        pen = new Pen(Color.Orange);
+                        DrawSpace(pen, nodePositions[key], g);
+                        break;
+                    case "ITEM":
+                        pen = new Pen(Color.LimeGreen);
+                        DrawSpace(pen, nodePositions[key], g);
+                        break;
+                    case "SUPPORT":
+                        pen = new Pen(Color.DarkOliveGreen);
                         DrawSpace(pen, nodePositions[key], g);
                         break;
                     default:
@@ -194,6 +152,79 @@ namespace SMPe
             // todo
         }
 
+        public void SetWindowName(string what)
+        {
+            this.Text = String.Format("SMPe v0.1 -- {0}", what);
+        }
+
+        private void PerformOpen(string where)
+        {
+            treeView1.Nodes.Clear();
+            isNodeSelected = false;
+
+            EndianBinaryReader reader = new EndianBinaryReader(File.Open(where, FileMode.Open));
+
+            BEA bea = new BEA(ref reader);
+            string fileName = Path.GetFileName(where);
+            string assetNumber = fileName.Split('_', '.')[1];
+            byte[] bfresArray = bea.GetAssetDataByKey(String.Format("mainmode/bds001_{0}/model/bds001_{0}_hook_mass.fmdb", assetNumber));
+
+            if (bfresArray == null)
+            {
+                MessageBox.Show("The archive selected does not contain hooks for spaces.");
+                return;
+            }
+
+            EndianBinaryReader bfresReader = new EndianBinaryReader(bfresArray);
+            mBfres = new BFRES(ref bfresReader);
+
+            byte[] csvArray = bea.GetAssetDataByKey(String.Format("mainmode/bds001_{0}/csv/bds001_{0}_map.csv", assetNumber));
+
+            if (csvArray == null)
+            {
+                MessageBox.Show("The archive selected does not contain the CSV file for space attributes.");
+                return;
+            }
+
+            StreamReader txtReader = new StreamReader(new MemoryStream(csvArray), Encoding.GetEncoding(932));
+            mBoard = new Board(ref txtReader);
+
+            nodePositions = new Dictionary<string, PointF>();
+
+            foreach (FSKL.Bone bone in mBfres.mSkeleton.mBones)
+            {
+                PointF point = new PointF(bone.mTranslation.X, bone.mTranslation.Z);
+                nodePositions.Add(bone.mName, point);
+
+                SpaceNode node = GetSpaceFromKey(bone.mName);
+
+                if (node != null)
+                {
+                    string nodeName;
+
+                    try
+                    {
+                        nodeName = Helper.mSimpleNodeNames[node.mSpaceType];
+                    }
+                    catch
+                    {
+                        nodeName = node.mSpaceType;
+                    }
+
+                    TreeNode tnode = new TreeNode(nodeName)
+                    {
+                        Tag = node
+                    };
+
+                    treeView1.Nodes.Add(tnode);
+                }
+            }
+
+            drawFlag = true;
+            statusStrip.Text = "File successfully loaded!";
+            panel1.Invalidate();
+        }
+
         /// <summary>
         /// Draws a space based on a position given.
         /// </summary>
@@ -206,7 +237,11 @@ namespace SMPe
             g.DrawLine(pen, point, point2);
         }
 
-<<<<<<< HEAD
+        /// <summary>
+        /// Draws a line from one node to another.
+        /// </summary>
+        /// <param name="node">The node to draw the lines from.</param>
+        /// <param name="g">Graphics supplied from the draw source.</param>
         private void DrawLinesToNextNodes(SpaceNode node, Graphics g)
         {
             Pen myPen = new Pen(Color.FromArgb(128, Color.Cyan));
@@ -216,12 +251,19 @@ namespace SMPe
 
             for (int i = 0; i < node.mNumNextNodes; i++)
             {
+                // get our space from the id
                 curNode = GetSpaceFromID(node.mNextNodes[i]);
-
+                // draw the line
                 g.DrawLine(myPen, GetPointFromNodeID(node.mNodeID, true), GetPointFromNodeID(curNode.mNodeID, true));
             }
         }
 
+        /// <summary>
+        /// Gets the location of a node from a Node ID.
+        /// </summary>
+        /// <param name="nodeID">Node ID to get the position for.</param>
+        /// <param name="isCSVNode">Is a node from the CSV file.</param>
+        /// <returns></returns>
         private PointF GetPointFromNodeID(string nodeID, bool isCSVNode)
         {
             if (isCSVNode)
@@ -248,15 +290,15 @@ namespace SMPe
 
         /// <summary>
         /// Returns a SpaceNode instance based on a given key.
-=======
-        /// <summary>
-        /// Returns a SpaceNode instance baesd on a given key.
->>>>>>> f9e139e5d7c2a828e9bc83bce3d57bc5dc6cfce7
         /// </summary>
         /// <param name="key">The node name to check for in the board space instances.</param>
         /// <returns>A SpaceNode that matches the given key. Returns null if not found.</returns>
         private SpaceNode GetSpaceFromKey(string key)
         {
+            // two known keys that don't have SpaceNode instances
+            if (key == "arrow" || key.Contains("line"))
+                return null;
+
             string[] split = key.Split('_');
 
             foreach (SpaceNode node in mBoard.mSpaces)
@@ -295,6 +337,19 @@ namespace SMPe
             }
         }
 
+        private void treeView1_KeyDown(object sender, KeyEventArgs e)
+        {
+            // the node is changed AFTER this is ran, soooo...
+            SpaceNode node;
+            if (e.KeyData == Keys.Up)
+                node = (SpaceNode)treeView1.Nodes[treeView1.SelectedNode.Index - 1].Tag;
+            else
+                node = (SpaceNode)treeView1.Nodes[treeView1.SelectedNode.Index + 1].Tag;
+
+            statusStrip.Text = String.Format("Selected Node: '{0}' Next: ('{1}' '{2}' '{3}' '{4}') Attributes: ('{5}' '{6}' '{7}')", node.mNodeID, node.mNextNodes[0], node.mNextNodes[1], node.mNextNodes[2], node.mNextNodes[3], node.mSpaceType, node.mAttr2, node.mAttr3);
+            panel1.Invalidate();
+        }
+
         Dictionary<string, PointF> nodePositions;
 
         PointF mSelectionPoint;
@@ -304,7 +359,5 @@ namespace SMPe
 
         bool drawFlag = false;
         bool isNodeSelected = false;
-
-        public Dictionary<string, string> mSimpleNodeNames;
     }
 }

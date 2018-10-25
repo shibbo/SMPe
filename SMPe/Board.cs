@@ -1,4 +1,16 @@
-﻿using System;
+﻿/*
+    © 2018 - shibboleet
+    SMPe is free software: you can redistribute it and/or modify it under
+    the terms of the GNU General Public License as published by the Free
+    Software Foundation, either version 3 of the License, or (at your option)
+    any later version.
+    SMPe is distributed in the hope that it will be useful, but WITHOUT ANY 
+    WARRANTY; See the GNU General Public License for more details.
+    You should have received a copy of the GNU General Public License along 
+    with SMPe. If not, see http://www.gnu.org/licenses/.
+*/
+
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -9,10 +21,8 @@ namespace SMPe
 {
     class Board
     {
-        public Board(string src)
+        public Board(ref StreamReader reader)
         {
-            StreamReader reader = new StreamReader(src, Encoding.GetEncoding(932));
-
             string line;
             byte curLine = 0;
 
