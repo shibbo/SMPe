@@ -5,4 +5,8 @@
 SMPe/bin/*
 SMPe/obj/*
 
+# more binaries
 *.exe
+
+# pretty sure i can't include this
+packages/*

@@ -19,6 +19,9 @@ using SMPe.fres;
 using SMPe.io;
 using System.Collections.Generic;
 using SMPe.bea;
+using System.Drawing.Drawing2D;
+using System.Drawing.Imaging;
+using static SMPe.Helper;
 
 namespace SMPe
 {
@@ -32,6 +35,15 @@ namespace SMPe
         public Editor(string where)
         {
             InitializeComponent();
+
+            double testX = 14.2f;
+            double testY = 13.2f;
+
+            float testA = 14.2f;
+            float testB = 13.2f;
+
+            Console.WriteLine(testX == testA);
+            Console.WriteLine(testY == testB);
 
             PerformOpen(where);
         }
@@ -61,33 +73,41 @@ namespace SMPe
 
             Graphics g = e.Graphics;
             g.SetClip(e.ClipRectangle);
-            g.ScaleTransform(12f, 12f);
-            g.TranslateTransform(60.0f, 30.0f);
+            g.ScaleTransform(14f, 14f);
+            g.TranslateTransform(55.0f, 30.0f);
             g.Clear(Color.Black);
 
             Pen pen = null;
 
+            // got a node selected?
             if (isNodeSelected)
             {
+                // get our node
                 SpaceNode selectedNode = (SpaceNode)treeView1.SelectedNode.Tag;
 
+                // somehow its null?
                 if (selectedNode == null)
                     Console.WriteLine("Node is null, yay");
                 else
                 {
+                    // get our point based on the selected node
                     mSelectionPoint = GetPointFromNodeID(selectedNode.mNodeID, true);
 
+                    // draw a semi-transparent circle
                     SolidBrush b = new SolidBrush(Color.FromArgb(128, Color.LightYellow));
                     e.Graphics.FillEllipse(b, mSelectionPoint.X - 1, mSelectionPoint.Y - 1.5f, 3, 3);
-                }
 
+                    // draw the lines to our next nodes
+                    DrawLinesToNextNodes(selectedNode, e.Graphics, true);
+                }
             }
 
             int curSpace = 0;
 
             // decide the color of the space (lol)
-            foreach (string key in nodePositions.Keys)
+            foreach (string key in mNodes.Keys)
             {
+                /// skip the first node since it's never an actual space, just a header
                 if (curSpace == 0)
                 {
                     curSpace++;
@@ -98,60 +118,95 @@ namespace SMPe
                 if (key == "hook_group")
                     continue;
 
-                SpaceNode node = GetSpaceFromKey(key);
+                SpaceNode node = mNodes[key];
 
+                // no node? ignore it
                 if (node == null)
-                {
-                    pen = new Pen(Color.LightCyan);
-                    DrawSpace(pen, nodePositions[key], g);
                     continue;
-                }
 
-                switch (node.mSpaceType)
+                PointF pos = new PointF(node.mPosX, isSidewaysView == true ? node.mPosY : node.mPosZ);
+
+                if (Helper.mNodeTypeToColor.ContainsKey(node.mSpaceType))
                 {
-                    case "PLUS":
-                        pen = new Pen(Color.Blue);
-                        DrawSpace(pen, nodePositions[key], g);
-                        break;
-                    case "MINUS":
-                        pen = new Pen(Color.Red);
-                        DrawSpace(pen, nodePositions[key], g);
-                        break;
-                    case "HAPPENING":
-                        pen = new Pen(Color.DarkRed);
-                        DrawSpace(pen, nodePositions[key], g);
-                        break;
-                    case "START":
-                        pen = new Pen(Color.Green);
-                        DrawSpace(pen, nodePositions[key], g);
-                        break;
-                    case "JOYCON":
-                        pen = new Pen(Color.Orange);
-                        DrawSpace(pen, nodePositions[key], g);
-                        break;
-                    case "ITEM":
-                        pen = new Pen(Color.LimeGreen);
-                        DrawSpace(pen, nodePositions[key], g);
-                        break;
-                    case "SUPPORT":
-                        pen = new Pen(Color.DarkOliveGreen);
-                        DrawSpace(pen, nodePositions[key], g);
-                        break;
-                    default:
-                        pen = new Pen(Color.Gold);
-                        DrawSpace(pen, nodePositions[key], g);
-                        break;
+                    pen = new Pen(mNodeTypeToColor[node.mSpaceType]);
+                    DrawSpace(pen, pos, g);
                 }
+                else
+                    DrawSpace(new Pen(Color.Gold), pos, g);
 
-                DrawLinesToNextNodes(node, g);
+                // draw the actual lines to the next nodes
+                DrawLinesToNextNodes(node, g, false);
             }
         }
 
         private void panel1_MouseDown(object sender, MouseEventArgs e)
         {
-            // todo
+            if (isNodeSelected)
+            {
+                if (e.Button == MouseButtons.Middle)
+                {
+                    // convert our position to the new position
+                    double curPosX = Math.Round((e.X / 14.0f) - 55.0f, 1);
+                    double curPosY = Math.Round((e.Y / 14.0f) - 30.0f, 1);
+
+                    SpaceNode node = (SpaceNode)treeView1.SelectedNode.Tag;
+                    node.mPosX = (float)curPosX;
+                    node.mPosZ = (float)curPosY;
+
+                    panel1.Invalidate();
+                }
+            }
+
+
+            // since we scale the entire thing up by 14x on startup, and we moved it...
+            // we need to convert our mouse click position to what the coords are and round to 1 decmial place
+            double posX = Math.Round((e.X / 14.0f) - 55.0f, 1);
+            double posY = Math.Round((e.Y / 14.0f) - 30.0f, 1);
+
+            // index to see which node we land on if we get a hit
+            int curIndex = 0;
+
+            foreach (SpaceNode node in mNodes.Values)
+            {
+                // nodes that don't have a position get thrown out
+                if (node == null)
+                    continue;
+
+                /*
+                 * Here is how the selection really works:
+                 * The values for node positions is REALLY small.
+                 * Due to this, it's nearly impossible to hit a node position dead on.
+                 * So we do some bounding by 0.7f, which is the width of each box.
+                 * Then we check if it is in the bounds, and if it is, that's our node.
+                 */
+                double upperX = node.mPosX + 0.7f;
+                double lowerX = node.mPosX - 0.7f;
+
+                double upperY = node.mPosZ + 0.7f;
+                double lowerY = node.mPosZ - 0.7f;
+
+                if (posX > lowerX && posX < upperX)
+                {
+                    if (posY > lowerY && posY < upperY)
+                    {
+                        // make this node our selected node
+                        treeView1.SelectedNode = treeView1.Nodes[curIndex];
+                        // load into PropertyGrid
+                        spaceInfoGrid.SelectedObject = node;
+                        isNodeSelected = true;
+
+                        panel1.Invalidate();
+                    }
+                }
+
+                curIndex++;
+            }
         }
 
+        /// <summary>
+        /// Sets the window name.
+        /// </summary>
+        /// <param name="what">The new window name, attached to the application name and version.</param>
         public void SetWindowName(string what)
         {
             this.Text = String.Format("SMPe v0.1 -- {0}", what);
@@ -189,17 +244,17 @@ namespace SMPe
             StreamReader txtReader = new StreamReader(new MemoryStream(csvArray), Encoding.GetEncoding(932));
             mBoard = new Board(ref txtReader);
 
-            nodePositions = new Dictionary<string, PointF>();
+            mNodes = new Dictionary<string, SpaceNode>();
 
             foreach (FSKL.Bone bone in mBfres.mSkeleton.mBones)
             {
-                PointF point = new PointF(bone.mTranslation.X, bone.mTranslation.Z);
-                nodePositions.Add(bone.mName, point);
-
                 SpaceNode node = GetSpaceFromKey(bone.mName);
+                mNodes.Add(bone.mName, GetSpaceFromKey(bone.mName));
 
                 if (node != null)
                 {
+                    node.SetPosition(bone.mTranslation);
+
                     string nodeName;
 
                     try
@@ -226,6 +281,18 @@ namespace SMPe
         }
 
         /// <summary>
+        /// Draws a space image at a specified position.
+        /// </summary>
+        /// <param name="spaceType">The string representing the space type.</param>
+        /// <param name="point">The point to draw at.</param>
+        /// <param name="g">Graphics instance to draw with.</param>
+        private void DrawSpaceImage(string spaceType, PointF point, Graphics g)
+        {
+            Image imag = Image.FromFile(String.Format("img/{0}.png", spaceType));
+            g.DrawImage(imag, point);
+        }
+
+        /// <summary>
         /// Draws a space based on a position given.
         /// </summary>
         /// <param name="pen">The pen to use. This can change the color of the space drawn.</param>
@@ -242,10 +309,20 @@ namespace SMPe
         /// </summary>
         /// <param name="node">The node to draw the lines from.</param>
         /// <param name="g">Graphics supplied from the draw source.</param>
-        private void DrawLinesToNextNodes(SpaceNode node, Graphics g)
+        private void DrawLinesToNextNodes(SpaceNode node, Graphics g, bool isForSelection)
         {
-            Pen myPen = new Pen(Color.FromArgb(128, Color.Cyan));
-            myPen.Width = 0.2f;
+            Pen pen;
+            // a highlighted line will be transparent and thicker
+            if (isForSelection)
+            {
+                pen = new Pen(Color.FromArgb(128, Color.OrangeRed));
+                pen.Width = 0.7f;
+            }
+            else
+            {
+                pen = new Pen(Color.FromArgb(128, Color.Cyan));
+                pen.Width = 0.2f;
+            }
 
             SpaceNode curNode;
 
@@ -253,8 +330,12 @@ namespace SMPe
             {
                 // get our space from the id
                 curNode = GetSpaceFromID(node.mNextNodes[i]);
+
+                if (curNode == null)
+                    continue;
+
                 // draw the line
-                g.DrawLine(myPen, GetPointFromNodeID(node.mNodeID, true), GetPointFromNodeID(curNode.mNodeID, true));
+                g.DrawLine(pen, GetPointFromNodeID(node.mNodeID, true), GetPointFromNodeID(curNode.mNodeID, true));
             }
         }
 
@@ -267,9 +348,15 @@ namespace SMPe
         private PointF GetPointFromNodeID(string nodeID, bool isCSVNode)
         {
             if (isCSVNode)
-                return nodePositions["hook_" + nodeID.PadLeft(3, '0')];
+            {
+                SpaceNode node = mNodes["hook_" + nodeID.PadLeft(3, '0')];
+                return new PointF(node.mPosX, isSidewaysView == true ? node.mPosY : node.mPosZ);
+            }
             else
-                return nodePositions[nodeID];
+            {
+                SpaceNode node = mNodes[nodeID];
+                return new PointF(node.mPosX, isSidewaysView == true ? node.mPosY : node.mPosZ);
+            }
         }
 
         /// <summary>
@@ -317,6 +404,16 @@ namespace SMPe
             return null;
         }
 
+        /// <summary>
+        /// Checks to see if a name is taken it the node dictionary.
+        /// </summary>
+        /// <param name="name">Name to check.</param>
+        /// <returns>True if taken, false if not.</returns>
+        private bool IsNameTaken(string name)
+        {
+            return mNodes.ContainsKey(name);
+        }
+
         private void closeToolStripMenuItem_Click(object sender, EventArgs e)
         {
             Close();
@@ -327,7 +424,7 @@ namespace SMPe
             SpaceNode node = (SpaceNode)e.Node.Tag;
             try
             {
-                statusStrip.Text = String.Format("Selected Node: '{0}' Next: ('{1}' '{2}' '{3}' '{4}') Attributes: ('{5}' '{6}' '{7}')", node.mNodeID, node.mNextNodes[0], node.mNextNodes[1], node.mNextNodes[2], node.mNextNodes[3], node.mSpaceType, node.mAttr2, node.mAttr3);
+                spaceInfoGrid.SelectedObject = node;
                 isNodeSelected = true;
                 panel1.Invalidate();
             }
@@ -342,15 +439,99 @@ namespace SMPe
             // the node is changed AFTER this is ran, soooo...
             SpaceNode node;
             if (e.KeyData == Keys.Up)
-                node = (SpaceNode)treeView1.Nodes[treeView1.SelectedNode.Index - 1].Tag;
+            {
+                try
+                {
+                    // get the node before because it's going up one node
+                    node = (SpaceNode)treeView1.Nodes[treeView1.SelectedNode.Index - 1].Tag;
+                    spaceInfoGrid.SelectedObject = node;
+                }
+                catch
+                {
+                    // look a useless catch
+                }
+            }
             else
-                node = (SpaceNode)treeView1.Nodes[treeView1.SelectedNode.Index + 1].Tag;
+            {
+                try
+                {
+                    // get the node after because it's going down one node
+                    node = (SpaceNode)treeView1.Nodes[treeView1.SelectedNode.Index + 1].Tag;
+                    spaceInfoGrid.SelectedObject = node;
+                }
+                catch
+                {
+                    // yet another useless catch
+                }
+            }
 
-            statusStrip.Text = String.Format("Selected Node: '{0}' Next: ('{1}' '{2}' '{3}' '{4}') Attributes: ('{5}' '{6}' '{7}')", node.mNodeID, node.mNextNodes[0], node.mNextNodes[1], node.mNextNodes[2], node.mNextNodes[3], node.mSpaceType, node.mAttr2, node.mAttr3);
             panel1.Invalidate();
         }
 
-        Dictionary<string, PointF> nodePositions;
+        private void upToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            isSidewaysView = false;
+            panel1.Invalidate();
+        }
+
+        private void sideToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            isSidewaysView = true;
+            panel1.Invalidate();
+        }
+
+        private void panel1_MouseMove(object sender, MouseEventArgs e)
+        {
+            // used for debugging
+            //double posX = Math.Round((e.X / 14.0f) - 55.0f, 1);
+            //double posY = Math.Round((e.Y / 14.0f) - 30.0f, 1);
+
+            //statusStrip.Text = String.Format("X: {0} Y: {1}", posX, posY);
+        }
+
+        private void deleteSpaceButton_Click(object sender, EventArgs e)
+        {
+            if (treeView1.SelectedNode == null)
+            {
+                MessageBox.Show("You need to have a space selected to delete it!");
+                return;
+            }
+
+            // we need to check if there are nodes connected to this node
+            // if there are, we need to set the node that connects with 
+            // the one being deleted to no longer point to it
+            SpaceNode theNode = (SpaceNode)treeView1.SelectedNode.Tag;
+            string nodeID = theNode.mNodeID;
+
+            foreach (SpaceNode node in mNodes.Values)
+            {
+                // ignore if our current node shows up here or if the node is null
+                if (node == null || node.mNodeID == nodeID)
+                    continue;
+
+                for (int i = 0; i < 4; i++)
+                {
+                    // is our ID we are deleting in this node?
+                    // if it is, we clear it and decrement the next node count
+                    if (node.mNextNodes[i] == nodeID)
+                    {
+                        node.mNumNextNodes--;
+                        node.mNextNodes[i] = "";
+                    }
+                }
+            }
+
+            // remove the node from the treeview
+            treeView1.Nodes.Remove(treeView1.SelectedNode);
+            // remove the node from the node dictionary
+            mNodes.Remove("hook_" + nodeID.PadLeft(3, '0'));
+            // update status label
+            statusStrip.Text = "Successfully removed node!";
+            // refresh panel
+            panel1.Invalidate();
+        }
+
+        Dictionary<string, SpaceNode> mNodes;
 
         PointF mSelectionPoint;
 
@@ -359,5 +540,6 @@ namespace SMPe
 
         bool drawFlag = false;
         bool isNodeSelected = false;
+        bool isSidewaysView = false;
     }
 }

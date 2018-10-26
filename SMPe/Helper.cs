@@ -12,6 +12,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -46,9 +47,11 @@ namespace SMPe
             { "PLUS", "Blue Space" },
             { "MINUS", "Red Space" },
             { "LUCKY", "Lucky Space" },
+            { "DONT_ENTRY", "Non-Enterable" },
             { "HATENA_1", "Event Space 1" },
             { "HATENA_2", "Event Space 2" },
             { "HATENA_3", "Event Space 3" },
+            { "HATENA_4", "Event Space 4" },
             { "START", "Starting Point" },
             { "MARK_PC", "Character Start Point" },
             { "MARK_STAR", "Star Position" },
@@ -57,13 +60,31 @@ namespace SMPe
             { "HAPPENING", "Unlucky Space" },
             { "ITEM", "Item Space" },
             { "BATTAN", "Whomp" },
+            { "DOSSUN", "Thwomp" },
             { "JUGEMU_OBJ", "Lakitu Cloud" },
             { "JUGEMU", "Lakitu Space" },
             { "JOYCON", "Versus Space" },
             { "TREASURE_OBJ", "Treasure Chest" },
             { "SHOP_A", "Shop 1 (Normal)" },
             { "SHOP_B", "Shop 2 (Special)" },
+            { "SHOP_C", "Shop 3" },
+            { "HARD_SHOP", "Shop (Force Buy)" },
+            { "ICECREAM_SHOP", "Ice Cream Shop" },
+            { "CLAYPIPE", "Pipe" },
+            { "CLAYPIPE_RED", "Red Pipe" },
+            { "PRESENT_BOX", "Present Space" },
+            { "PRESENT_BOX_OBJ", "Present Object" },
+            { "TURNOUT_SWITCH", "Conveyer Belt Space" },
+            { "NPC_BOMBHEI", "Bob-omb Space" },
             { "", "Branch" }
         };
+
+        public static Dictionary<string, Color> mNodeTypeToColor = new Dictionary<string, Color>()
+        {
+            { "PLUS", Color.Blue },
+            { "MINUS", Color.Red },
+
+        };
+
     }
 }
