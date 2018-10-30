@@ -73,7 +73,7 @@ namespace SMPe
 
             Graphics g = e.Graphics;
             g.SetClip(e.ClipRectangle);
-            g.ScaleTransform(14f, 14f);
+            g.ScaleTransform(curZoom, curZoom);
             g.TranslateTransform(55.0f, 30.0f);
             g.Clear(Color.Black);
 
@@ -160,8 +160,8 @@ namespace SMPe
 
             // since we scale the entire thing up by 14x on startup, and we moved it...
             // we need to convert our mouse click position to what the coords are and round to 1 decmial place
-            double posX = Math.Round((e.X / 14.0f) - 55.0f, 1);
-            double posY = Math.Round((e.Y / 14.0f) - 30.0f, 1);
+            double posX = Math.Round((e.X / curZoom) - 55.0f, 1);
+            double posY = Math.Round((e.Y / curZoom) - 30.0f, 1);
 
             // index to see which node we land on if we get a hit
             int curIndex = 0;
@@ -531,6 +531,20 @@ namespace SMPe
             panel1.Invalidate();
         }
 
+        private void toolStripSplitButton1_DropDownItemClicked(object sender, ToolStripItemClickedEventArgs e)
+        {
+            /* 
+             * our zoom base is 14.0f, since it seems to work on most desktops without cutting off.
+             * but what about those poor folks with small screens? We implement zooms, of course!
+             * we can choose to increase or decrease the zoom based on the selected zoom
+             * each zoom entry has a tag that defines the zoom number, such as "90", "50", or "140"
+             * said tag is an object, so we have to cast to string, then interpret the string as a float
+             * then we divide by that float, so 80% = (baseSize * (80.0f / 100.0f)
+             */
+            curZoom = (14.0f * (float.Parse((string)e.ClickedItem.Tag) / 100.0f));
+            panel1.Invalidate();
+        }
+
         Dictionary<string, SpaceNode> mNodes;
 
         PointF mSelectionPoint;
@@ -541,5 +555,7 @@ namespace SMPe
         bool drawFlag = false;
         bool isNodeSelected = false;
         bool isSidewaysView = false;
+
+        float curZoom = 14.0f;
     }
 }

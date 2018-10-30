@@ -17,6 +17,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.IO;
 using SMPe.io;
+using ZstdNet;
 
 namespace SMPe.bea
 {
@@ -74,7 +75,13 @@ namespace SMPe.bea
             ASST asset;
 
             if (mAssets.TryGetValue(key, out asset))
-                return asset.mFileData;
+            {
+                Console.WriteLine("About to decompress {0}...", asset.mFileName);
+
+                // decompressing data
+                var decompressor = new Decompressor();
+                return decompressor.Unwrap(asset.mCompressedFileData);
+            }
             else
                 return null;
         }

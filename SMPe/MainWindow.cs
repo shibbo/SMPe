@@ -9,6 +9,8 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using SMPe.Properties;
 using SMPe.io;
+using SMPe.bea;
+using System.IO;
 
 namespace SMPe
 {

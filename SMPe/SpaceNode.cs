@@ -59,7 +59,7 @@ namespace SMPe
 
         [Category("Space Attributes")]
         [DisplayName("Node ID")]
-        [Description("ID of the current node. Use this to connect other node.")]
+        [Description("ID of the current node. Use this to connect other nodes.")]
         public string NodeID
         {
             get { return mNodeID; }

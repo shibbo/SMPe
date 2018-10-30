@@ -42,6 +42,15 @@ namespace SMPe
             public float H;
         }
 
+        public struct Color4
+        {
+            public byte R;
+            public byte G;
+            public byte B;
+            public byte A;
+        }
+
+
         public static Dictionary<string, string> mSimpleNodeNames = new Dictionary<string, string>()
         {
             { "PLUS", "Blue Space" },
@@ -83,7 +92,23 @@ namespace SMPe
         {
             { "PLUS", Color.Blue },
             { "MINUS", Color.Red },
-
+            { "LUCKY", Color.LightGreen },
+            { "HATENA_1", Color.DarkOliveGreen },
+            { "HATENA_2", Color.DarkOliveGreen },
+            { "HATENA_3", Color.DarkOliveGreen },
+            { "HATENA_4", Color.DarkOliveGreen },
+            { "ITEM", Color.Green },
+            { "ITEM_2", Color.Green },
+            { "SUPPORT", Color.SlateBlue },
+            { "START", Color.DarkGreen },
+            { "MARK_PC", Color.DarkViolet },
+            { "JOYCON", Color.Orange },
+            { "MARK_STAROBJ", Color.Pink },
+            { "HAPPENING", Color.DarkRed },
+            { "SHOP_A", Color.Silver },
+            { "SHOP_B", Color.Silver },
+            { "SHOP_C", Color.Silver },
+            { "", Color.White }
         };
 
     }

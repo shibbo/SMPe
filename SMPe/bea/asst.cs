@@ -44,12 +44,6 @@ namespace SMPe.bea
 
             mCompressedFileData = reader.ReadBytesAt(mFileOffset, mFileSize);
             mFileName = reader.ReadStringFromOffset(mStringOffset);
-
-            Console.WriteLine("About to decompress {0}...", mFileName);
-
-            // decompressing data
-            var decompressor = new Decompressor();
-            mFileData = decompressor.Unwrap(mCompressedFileData);
         }
 
         string mMagic;
@@ -61,8 +55,7 @@ namespace SMPe.bea
         long mUncompressedSize;
         long mFileOffset;
         long mStringOffset;
-        byte[] mCompressedFileData;
-        public byte[] mFileData;
+        public byte[] mCompressedFileData;
         public string mFileName;
     }
 }

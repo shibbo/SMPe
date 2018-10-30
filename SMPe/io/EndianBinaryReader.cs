@@ -56,6 +56,19 @@ namespace SMPe.io
             return ret;
         }
 
+        /*public void ReadStringEntry(long where, ref CLB1.CLBStringEntry entry)
+        {
+            long curPos = this.BaseStream.Position;
+            this.BaseStream.Position += where;
+
+            entry.unk1 = ReadUInt32();
+
+            // these strings have a byte to determine how long it is
+            byte length = ReadByte();
+            entry.name = Encoding.Default.GetString(ReadBytes(length));
+            this.BaseStream.Position = curPos;
+        }*/
+
         public byte[] ReadBytesAt(long where, int numBytes)
         {
             long curPos = this.BaseStream.Position;
